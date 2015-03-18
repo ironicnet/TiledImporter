@@ -52,22 +52,23 @@ namespace Ironicnet.TiledImporter
             BoxCollider collider = this.GetComponent<BoxCollider>();
             if (collider != null)
             {
-                collider.center = new Vector3(((WidthUnit*Colspan)/2)-WidthUnit/2, 0,0);
+                collider.center = new Vector3(((WidthUnit * Colspan) / 2) - WidthUnit / 2, (((HeightUnit * Rowspan) / 2) - HeightUnit / 2) * -1, 0);
                 collider.size = new Vector3(WidthUnit * Colspan, HeightUnit * Rowspan, DepthUnit);
             }
         }
 
         private void UpdateConfigProperties()
         {
-            if (config != null)
+            if (config != null && config.Properties!=null)
             {
-                Colspan = int.Parse(config.Properties.First(p => p.Name == "colspan").Value);
+                Colspan = Property.GetIntValue("colspan", config.Properties, 1);
+                Rowspan = Property.GetIntValue("rowspan", config.Properties, 1);
             }
             else
             {
                 Colspan = 1;
+                Rowspan = 1;
             }
-            Rowspan = 1;
         }
 
     }

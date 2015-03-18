@@ -101,5 +101,15 @@ namespace Ironicnet.TiledImporter
     {
         public string Name;
         public string Value;
+
+        internal static int GetIntValue(string propertyName, Property[] properties, int defaultValue=0)
+        {
+            var property = properties.FirstOrDefault(p => p != null && p.Name == propertyName);
+            if (property != null)
+            {
+                int.TryParse(property.Value, out defaultValue);
+            }
+            return defaultValue;
+        }
     }
 }

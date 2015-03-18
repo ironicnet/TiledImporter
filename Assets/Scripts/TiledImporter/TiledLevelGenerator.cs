@@ -65,7 +65,6 @@ namespace Ironicnet.TiledImporter
             for (int i = 0; i < tiled.Map.Layers.Length; i++)
             {
                 var layer = tiled.Map.Layers[i];
-                Debug.Log(layer.data);
                 int x = 0;
                 int y = 0;
                 float zOrder = (tiled.Map.Layers.Length - 1 - i) * ZOrderDepth;
@@ -77,7 +76,7 @@ namespace Ironicnet.TiledImporter
                 layerObject.transform.position = Vector3.zero;
 
                 Tile lastXTile = null;
-                Tile lastYTile = null;
+                Tile[] lastRowsTiles = null;
                 for (int j = 0; j < layer.data.tiles.Length; j++)
                 {
                     bool ignoreThisTile = false;
@@ -106,29 +105,44 @@ namespace Ironicnet.TiledImporter
                         currentTile.SetConfig(tileset.GetConfig(gid));
                         currentTile.transform.parent = layerObject.transform;
 
-                        if (lastXTile != null && lastXTile.config!=null && lastXTile.Colspan>1)
+                        Tile parentTile = null;
+                        if (lastRowsTiles[x] != null)
                         {
-                            //Debug.Log(string.Concat("X:", currentTile.X, ". Last X: ", lastXTile.X, ". Colspan: ", lastXTile.Colspan));
+                            if ((currentTile.Y - lastRowsTiles[x].Y < lastRowsTiles[x].Rowspan) && (currentTile.X - lastRowsTiles[x].X < lastRowsTiles[x].Rowspan))
+                            {
+                                parentTile = lastRowsTiles[x];
+                            }
+                        }
+                        else if (lastXTile != null && lastXTile.config!=null && lastXTile.Colspan>1)
+                        {
                             if (currentTile.X - lastXTile.X < lastXTile.Colspan)
                             {
-                                GameObject.DestroyImmediate(currentTile.GetComponent<Collider>());
-                                currentTile.transform.parent = lastXTile.transform;
-                                ignoreThisTile = true;
+                                parentTile = lastXTile;
                             }
 
+                        }
+                        if (parentTile != null)
+                        {
+                            GameObject.DestroyImmediate(currentTile.GetComponent<Collider>());
+                            currentTile.transform.parent = parentTile.transform;
+                            ignoreThisTile = true;
                         }
                         
                     }
 
                     if (x >= tiled.Map.width - 1)
                     {
-                        x = 0;
-                        y--;
                         if (!ignoreThisTile)
                         {
-                            lastYTile = currentTile;
+                            lastRowsTiles[x] = currentTile;
+                            lastXTile = null;
                         }
-                        lastXTile = null;
+                        else
+                        {
+                            lastRowsTiles[x] = lastXTile;
+                        }
+                        x = 0;
+                        y--;
                     }
                     else
                     {
@@ -166,7 +180,6 @@ namespace Ironicnet.TiledImporter
             int lastMatching = 0;
             for (int i = 0; i < tilesetData.Length; i++)
             {
-                Debug.Log(tilesetData[i]);
                 if (tilesetData[i].Tileset.FirstGID <= gid)
                 {
                     lastMatching = i;
