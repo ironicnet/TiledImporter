@@ -8,9 +8,6 @@
    </properties>
   </tile>
  </tileset>
- <tileset firstgid="3724" name="BasicForegroundParts" tilewidth="16" tileheight="16">
-  <image source="../Sprites/BasicForegroundParts.png" width="1024" height="288"/>
- </tileset>
  <layer name="Background" width="30" height="10">
   <properties>
    <property name="ZOrder" value="0.16"/>
