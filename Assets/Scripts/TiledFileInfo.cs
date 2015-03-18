@@ -39,14 +39,34 @@ public class TiledFileInfo : MonoBehaviour
         map.Layers = ParseLayers(tilemapXml);
         map.ObjectGroups = ParseGroups(tilemapXml);
         map.version = tilemapXml.Attributes["version"].Value;
-        map.orientation = tilemapXml.Attributes["orientation"].Value;
-        map.renderorder = tilemapXml.Attributes["renderorder"].Value;
-        map.width = long.Parse(tilemapXml.Attributes["width"].Value);
-        map.height = long.Parse(tilemapXml.Attributes["height"].Value);
-        map.tilewidth = int.Parse(tilemapXml.Attributes["tilewidth"].Value);
-        map.tileheight = int.Parse(tilemapXml.Attributes["tileheight"].Value);
-        map.nextobjectid = long.Parse(tilemapXml.Attributes["nextobjectid"].Value);
+        map.orientation = GetAttributeValue(tilemapXml, "orientation");
+        map.renderorder = GetAttributeValue(tilemapXml, "renderorder");
+        map.width = long.Parse(GetAttributeValue(tilemapXml, "width"));
+        map.height = long.Parse(GetAttributeValue(tilemapXml, "height"));
+        map.tilewidth = int.Parse(GetAttributeValue(tilemapXml, "tilewidth"));
+        map.tileheight = int.Parse(GetAttributeValue(tilemapXml, "tileheight"));
+        map.nextobjectid = GetAttributeLong(tilemapXml, "nextobjectid");
         return map;
+    }
+
+    private long GetAttributeLong(System.Xml.XmlNode tilemapXml, string attribute, long defaultValue=0)
+    {
+        long output = defaultValue;
+        long.TryParse(GetAttributeValue(tilemapXml, "nextobjectid"), out output);
+        return output;
+    }
+
+    private string GetAttributeValue(System.Xml.XmlNode tilemapXml, string attribute, string defaultValue = null)
+    {
+        var attr = tilemapXml.Attributes[attribute];
+        if (attr != null)
+        {
+            return attr.Value;
+        }
+        else
+        {
+            return defaultValue;
+        }
     }
 
     private TiledObjectGroup[] ParseGroups(System.Xml.XmlNode tilemapXml)
@@ -285,9 +305,22 @@ public class TiledFileInfo : MonoBehaviour
         public string Name;
         public int TileWidth;
         public int TileHeight;
-        public int FirstGID;
+        public long FirstGID;
         public TiledTilesetImage Image;
         public TiledTilesetTileConfig[] TilesConfig;
+
+        internal TiledTilesetTileConfig GetConfig(long gid)
+        {
+            long internalGid = gid - FirstGID;
+            for (int i = 0; i < TilesConfig.Length; i++)
+            {
+                if (TilesConfig[i].Id == internalGid)
+                {
+                    return TilesConfig[i];
+                }
+            }
+            return null;
+        }
     }
     [Serializable]
     public class TiledTilesetTileConfig
@@ -311,8 +344,9 @@ public class TiledFileInfo : MonoBehaviour
         public bool Visible = true;
         public Property[] Properties;
 
-        public LayerData data;
+        public LayerData data = new LayerData();
     }
+    [Serializable]
     public class LayerData
     {
         public long[] tiles;
