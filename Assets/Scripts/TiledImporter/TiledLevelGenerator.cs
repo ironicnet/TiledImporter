@@ -12,7 +12,9 @@ namespace Ironicnet.TiledImporter
         public string Filename;
         public Tiled tiled;
         public TilesetData[] tilesetData;
-        public Tile DefaultPrefab;
+        public Tile DefaultTilePrefab;
+
+        public BoxCollider DefaultObjectPrefab;
 
 
         public int UnitsPerPixel = 100;
@@ -90,7 +92,7 @@ namespace Ironicnet.TiledImporter
 
                         Sprite sprite = tileset.Sprites[spriteIndex];
                         Vector3 position = new Vector3(x * widthFactor, y * heightFactor, zOrder);
-                        currentTile = GameObject.Instantiate(DefaultPrefab, position, new Quaternion()) as Tile;
+                        currentTile = GameObject.Instantiate(DefaultTilePrefab, position, new Quaternion()) as Tile;
                         currentTile.gameObject.name = string.Concat("Tile[", x, ",", y, "] - gid:(", gid, ")");
                         currentTile.X = x;
                         currentTile.Y = y;
@@ -106,7 +108,7 @@ namespace Ironicnet.TiledImporter
 
                         if (lastXTile != null && lastXTile.config!=null && lastXTile.Colspan>1)
                         {
-                            Debug.Log(string.Concat("X:", currentTile.X, ". Last X: ", lastXTile.X, ". Colspan: ", lastXTile.Colspan));
+                            //Debug.Log(string.Concat("X:", currentTile.X, ". Last X: ", lastXTile.X, ". Colspan: ", lastXTile.Colspan));
                             if (currentTile.X - lastXTile.X < lastXTile.Colspan)
                             {
                                 GameObject.DestroyImmediate(currentTile.GetComponent<Collider>());
@@ -137,7 +139,25 @@ namespace Ironicnet.TiledImporter
                         }
                     }
                 }
+            }
+            for (int i = 0; i < tiled.Map.ObjectGroups.Length; i++)
+            {
+                var objGroup = tiled.Map.ObjectGroups[i];
+                GameObject objGroupTransform = new GameObject();
+                objGroupTransform.name = objGroup.Name;
 
+                for (int j = 0; j < objGroup.Objects.Length; j++)
+                {
+                    
+                    var obj = objGroup.Objects[j];
+                    BoxCollider unityObject = GameObject.Instantiate(DefaultObjectPrefab, new Vector3(obj.x / UnitsPerPixel, obj.y / UnitsPerPixel * -1, ZOrderDepth), new Quaternion()) as BoxCollider;
+                    unityObject.name = obj.Name;
+                    unityObject.size = new Vector3(obj.width / UnitsPerPixel, obj.height / UnitsPerPixel, 1);
+                    unityObject.center = new Vector3(obj.width / UnitsPerPixel / 2, obj.height / UnitsPerPixel/2 * -1, ZOrderDepth);
+                    Debug.Log(string.Concat("X:", obj.x, ". Y: ", obj.y, ". Name: ", obj.Name));
+
+                    unityObject.transform.parent = objGroupTransform.transform;
+                }
             }
         }
 

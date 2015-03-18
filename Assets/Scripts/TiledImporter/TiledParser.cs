@@ -157,7 +157,9 @@ namespace Ironicnet.TiledImporter
                 {
                     case "id":
                         tileObject.id = attr.Value;
-                        tileObject.Name = tileObject.id;
+                        break;
+                    case "name":
+                        tileObject.Name = attr.Value;
                         break;
                     case "type":
                         tileObject.type = attr.Value;
