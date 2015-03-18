@@ -74,10 +74,13 @@ namespace Ironicnet.TiledImporter
                 GameObject layerObject = new GameObject(layer.Name);
                 layerObject.transform.position = Vector3.zero;
 
-
+                Tile lastXTile = null;
+                Tile lastYTile = null;
                 for (int j = 0; j < layer.data.tiles.Length; j++)
                 {
+                    bool ignoreThisTile = false;
                     long gid = layer.data.tiles[j];
+                    Tile currentTile = null;
                     if (gid > 0)
                     {
                         TilesetData tileset = GetTileset(gid);
@@ -87,23 +90,51 @@ namespace Ironicnet.TiledImporter
 
                         Sprite sprite = tileset.Sprites[spriteIndex];
                         Vector3 position = new Vector3(x * widthFactor, y * heightFactor, zOrder);
-                        Tile tile = GameObject.Instantiate(DefaultPrefab, position, new Quaternion()) as Tile;
-                        tile.gameObject.name = string.Concat("Tile[", x, ",", y, "] - gid:(", gid, ")");
-                        tile.SetSprite(sprite);
-                        tile.config = tileset.GetConfig(gid);
-                        tile.transform.parent = layerObject.transform;
+                        currentTile = GameObject.Instantiate(DefaultPrefab, position, new Quaternion()) as Tile;
+                        currentTile.gameObject.name = string.Concat("Tile[", x, ",", y, "] - gid:(", gid, ")");
+                        currentTile.X = x;
+                        currentTile.Y = y;
+                        currentTile.WidthPx = tileset.Tileset.TileWidth;
+                        currentTile.WidthUnit = widthFactor;
+                        currentTile.HeightPx = tileset.Tileset.TileHeight;
+                        currentTile.HeightUnit = heightFactor;
+                        currentTile.DepthUnit = ZOrderDepth;
+                        currentTile.ZOrder = zOrder;
+                        currentTile.SetSprite(sprite);
+                        currentTile.SetConfig(tileset.GetConfig(gid));
+                        currentTile.transform.parent = layerObject.transform;
+
+                        if (lastXTile != null && lastXTile.config!=null && lastXTile.Colspan>1)
+                        {
+                            Debug.Log(string.Concat("X:", currentTile.X, ". Last X: ", lastXTile.X, ". Colspan: ", lastXTile.Colspan));
+                            if (currentTile.X - lastXTile.X < lastXTile.Colspan)
+                            {
+                                GameObject.DestroyImmediate(currentTile.GetComponent<Collider>());
+                                currentTile.transform.parent = lastXTile.transform;
+                                ignoreThisTile = true;
+                            }
+
+                        }
+                        
                     }
-                    else
-                    {
-                    }
+
                     if (x >= tiled.Map.width - 1)
                     {
                         x = 0;
                         y--;
+                        if (!ignoreThisTile)
+                        {
+                            lastYTile = currentTile;
+                        }
+                        lastXTile = null;
                     }
                     else
                     {
                         x++;
+                        if (!ignoreThisTile)
+                        {
+                            lastXTile = currentTile;
+                        }
                     }
                 }
 

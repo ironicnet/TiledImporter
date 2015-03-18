@@ -4,7 +4,13 @@
   <image source="../Sprites/Tileset.png" trans="ffffff" width="128" height="112"/>
   <tile id="14">
    <properties>
+    <property name="colspan" value="2"/>
     <property name="isAnimated" value="true"/>
+   </properties>
+  </tile>
+  <tile id="22">
+   <properties>
+    <property name="colspan" value="2"/>
    </properties>
   </tile>
  </tileset>
@@ -619,4 +625,8 @@
    <tile gid="22"/>
   </data>
  </layer>
+ <objectgroup name="Capa de Objetos 1" width="30" height="10">
+  <object x="7" y="22" width="88" height="87"/>
+  <object gid="7" x="126" y="113"/>
+ </objectgroup>
 </map>
