@@ -74,9 +74,10 @@ namespace Ironicnet.TiledImporter
                 }
                 GameObject layerObject = new GameObject(layer.Name);
                 layerObject.transform.position = Vector3.zero;
+                layerObject.gameObject.SetActive(layer.Visible);
 
                 Tile lastXTile = null;
-                Tile[] lastRowsTiles = null;
+                Tile[] lastRowsTiles = new Tile[tiled.Map.width];
                 for (int j = 0; j < layer.data.tiles.Length; j++)
                 {
                     bool ignoreThisTile = false;
