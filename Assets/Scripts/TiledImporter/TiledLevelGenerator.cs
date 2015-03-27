@@ -3,6 +3,7 @@ using System.Collections;
 using System.Linq;
 using UnityEditor;
 using System;
+using System.Collections.Generic;
 
 namespace Ironicnet.TiledImporter
 {
@@ -62,12 +63,12 @@ namespace Ironicnet.TiledImporter
                 }
             }
 
-            for (int i = 0; i < tiled.Map.Layers.Length; i++)
+            for (int layerIndex = 0; layerIndex < tiled.Map.Layers.Length; layerIndex++)
             {
-                var layer = tiled.Map.Layers[i];
+                var layer = tiled.Map.Layers[layerIndex];
                 int x = 0;
                 int y = 0;
-                float zOrder = (tiled.Map.Layers.Length - 1 - i) * ZOrderDepth;
+                float zOrder = (tiled.Map.Layers.Length - 1 - layerIndex) * ZOrderDepth;
                 if (layer.Properties.Any(p => p.Name == "ZOrder"))
                 {
                     //zOrder = float.Parse(layer.Properties.First(p => p.Name == "ZOrder").Value);
@@ -77,6 +78,8 @@ namespace Ironicnet.TiledImporter
 
                 Tile lastXTile = null;
                 Tile[] lastRowsTiles = null;
+                Tile[] currentRowsTiles = new Tile[tiled.Map.width];
+                Tile[,] Tiles = new Tile[tiled.Map.height, tiled.Map.width];
                 for (int j = 0; j < layer.data.tiles.Length; j++)
                 {
                     bool ignoreThisTile = false;
@@ -90,7 +93,7 @@ namespace Ironicnet.TiledImporter
                         long spriteIndex = gid - tileset.Tileset.FirstGID;
 
                         Sprite sprite = tileset.Sprites[spriteIndex];
-                        Vector3 position = new Vector3(x * widthFactor, y * heightFactor, zOrder);
+                        Vector3 position = new Vector3(x * widthFactor, -1*y * heightFactor, zOrder);
                         currentTile = GameObject.Instantiate(DefaultTilePrefab, position, new Quaternion()) as Tile;
                         currentTile.gameObject.name = string.Concat("Tile[", x, ",", y, "] - gid:(", gid, ")");
                         currentTile.X = x;
@@ -104,45 +107,51 @@ namespace Ironicnet.TiledImporter
                         currentTile.SetSprite(sprite);
                         currentTile.SetConfig(tileset.GetConfig(gid));
                         currentTile.transform.parent = layerObject.transform;
+                        currentRowsTiles[x] = currentTile;
+                        Tiles[y, x] = currentTile;
 
                         Tile parentTile = null;
-                        if (lastRowsTiles[x] != null)
+                        if (lastRowsTiles != null && lastRowsTiles[x] != null)
                         {
                             if ((currentTile.Y - lastRowsTiles[x].Y < lastRowsTiles[x].Rowspan) && (currentTile.X - lastRowsTiles[x].X < lastRowsTiles[x].Rowspan))
                             {
+                                Debug.Log("Possible parent to Y" + currentTile.name, lastRowsTiles[x]);
                                 parentTile = lastRowsTiles[x];
                             }
                         }
-                        else if (lastXTile != null && lastXTile.config!=null && lastXTile.Colspan>1)
+                        if (parentTile == null && lastXTile != null && lastXTile.config != null && lastXTile.Colspan > 1)
                         {
                             if (currentTile.X - lastXTile.X < lastXTile.Colspan)
                             {
                                 parentTile = lastXTile;
                             }
-
                         }
                         if (parentTile != null)
                         {
                             GameObject.DestroyImmediate(currentTile.GetComponent<Collider>());
                             currentTile.transform.parent = parentTile.transform;
                             ignoreThisTile = true;
+                            currentRowsTiles[x] = parentTile;
                         }
-                        
+
+                    }
+                    else
+                    {
+                        currentRowsTiles[x] = null;
+                        Debug.Log(string.Concat("Y: ",y, ".X: ", x, ".Tiles: ",  Tiles));
+                        Tiles[y, x] = null;
                     }
 
                     if (x >= tiled.Map.width - 1)
                     {
                         if (!ignoreThisTile)
                         {
-                            lastRowsTiles[x] = currentTile;
                             lastXTile = null;
                         }
-                        else
-                        {
-                            lastRowsTiles[x] = lastXTile;
-                        }
+                        lastRowsTiles = new Tile[currentRowsTiles.Length];
+                        currentRowsTiles.CopyTo(lastRowsTiles, 0);
                         x = 0;
-                        y--;
+                        y++;
                     }
                     else
                     {
@@ -153,6 +162,7 @@ namespace Ironicnet.TiledImporter
                         }
                     }
                 }
+                OptimizeColliders(Tiles);
             }
             for (int i = 0; i < tiled.Map.ObjectGroups.Length; i++)
             {
@@ -162,15 +172,52 @@ namespace Ironicnet.TiledImporter
 
                 for (int j = 0; j < objGroup.Objects.Length; j++)
                 {
-                    
+
                     var obj = objGroup.Objects[j];
                     BoxCollider unityObject = GameObject.Instantiate(DefaultObjectPrefab, new Vector3(obj.x / UnitsPerPixel, obj.y / UnitsPerPixel * -1, ZOrderDepth), new Quaternion()) as BoxCollider;
                     unityObject.name = obj.Name;
                     unityObject.size = new Vector3(obj.width / UnitsPerPixel, obj.height / UnitsPerPixel, 1);
-                    unityObject.center = new Vector3(obj.width / UnitsPerPixel / 2, obj.height / UnitsPerPixel/2 * -1, ZOrderDepth);
+                    unityObject.center = new Vector3(obj.width / UnitsPerPixel / 2, obj.height / UnitsPerPixel / 2 * -1, ZOrderDepth);
                     Debug.Log(string.Concat("X:", obj.x, ". Y: ", obj.y, ". Name: ", obj.Name));
 
                     unityObject.transform.parent = objGroupTransform.transform;
+                }
+            }
+        }
+
+        private void OptimizeColliders(Tile[,] tiles)
+        {
+            Dictionary<Guid, List<Tile>> groups = new Dictionary<Guid, List<Tile>>();
+            for (var y = tiles.GetLowerBound(0); y < tiles.GetUpperBound(0); y++)
+            {
+                for (var x = tiles.GetLowerBound(1); x < tiles.GetUpperBound(1); x++)
+                {
+                    var current = tiles[y, x];
+                    if (current==null || current.IsSpanned) continue;
+
+                    var top = y > 0 ? tiles[y - 1, x] : null;
+                    var bottom = y < tiles.GetUpperBound(0) - 1 ? tiles[y + 1, x] : null;
+                    var left = x > 0 ? tiles[y, x - 1] : null;
+                    bool canGroupLeft = (left != null && !left.IsSpanned);
+                    bool leftIsNonGrouped = canGroupLeft && left.GroupId == Guid.Empty;
+                    var right = x < tiles.GetUpperBound(1) - 1 ? tiles[y, x + 1] : null;
+                    bool canGroupRight = (right != null && !right.IsSpanned);
+                    bool rightIsNonGrouped = canGroupRight && right.GroupId == Guid.Empty;
+
+                    if (canGroupLeft)
+                    {
+                        if (left.GroupId == Guid.Empty)
+                        {
+                            Guid guid = Guid.NewGuid();
+                            left.GroupId = guid;
+                            current.GroupId = guid;
+                            groups.Add(guid, new List<Tile>() { left, current });
+                        }
+                        else
+                        {
+                            groups[left.GroupId].Add(current);
+                        }
+                    }
                 }
             }
         }

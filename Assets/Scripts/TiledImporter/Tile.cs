@@ -16,6 +16,8 @@ namespace Ironicnet.TiledImporter
         public int HeightPx;
         public float HeightUnit;
         public float DepthUnit;
+        public bool IsSpanned;
+        public System.Guid GroupId;
         public int Colspan
         {
             get;
